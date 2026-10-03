@@ -27,8 +27,22 @@ BLOCK_END="-- END OMARCHY-CAELESTIA: launcher"
 die(){ echo "✗ $*" >&2; exit 1; }
 info(){ echo "==> $*"; }
 
+SKIP_DEPS=0
+for arg in "$@"; do
+    case "$arg" in
+        --skip-deps) SKIP_DEPS=1 ;;
+        *) die "Unknown option: $arg (supported: --skip-deps)" ;;
+    esac
+done
+
 [[ -d "$SOURCE_DIR" ]] || die "Caelestia source not found: $SOURCE_DIR"
 [[ -f "$BINDINGS_FILE" ]] || die "Hyprland bindings not found: $BINDINGS_FILE"
+
+if [[ "$SKIP_DEPS" -eq 0 ]]; then
+    "$SOURCE_DIR/omarchy/scripts/install-dependencies.sh" ||
+        die "Dependencies are missing (re-run with --skip-deps to bypass the check)"
+    echo
+fi
 
 for c in cmake ninja qs hyprctl python3 pgrep; do
     command -v "$c" >/dev/null || die "$c is required"
@@ -147,7 +161,7 @@ BACKUP_FILE="$BACKUP_DIR/bindings.lua.$STAMP"
 cp --preserve=mode,ownership,timestamps "$BINDINGS_FILE" "$BACKUP_FILE"
 printf '%s\n' "$BACKUP_FILE" > "$BACKUP_STATE"
 
-info "Installing managed Caelestia launcher binding"
+info "Installing managed Caelestia bindings and autostart"
 
 python3 - "$BINDINGS_FILE" "$BLOCK_START" "$BLOCK_END" <<'PY'
 import sys
@@ -164,6 +178,17 @@ hl.bind(
     "SUPER + SPACE",
     hl.dsp.exec_cmd("qs ipc -c caelestia call drawers toggle launcher"),
     { description = "Caelestia launcher" }
+)
+
+-- Start Caelestia at login unless it was turned off with the toggle.
+o.exec_on_start(os.getenv("HOME") .. "/.local/bin/omarchy-caelestia-toggle start")
+
+-- Turn Caelestia on/off; the choice persists across logins.
+hl.unbind("SUPER + ALT + C")
+hl.bind(
+    "SUPER + ALT + C",
+    hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/omarchy-caelestia-toggle toggle"),
+    { description = "Toggle Caelestia" }
 )
 -- END OMARCHY-CAELESTIA: launcher"""
 
@@ -191,6 +216,14 @@ ERRORS="$(hyprctl configerrors 2>&1 || true)"
     { printf '%s\n' "$ERRORS"; die "Hyprland reported configuration errors"; }
 
 printf '%s\n' "$(sha256sum "$BINDINGS_FILE" | awk '{print $1}')" > "$OWNED_HASH"
+
+"$SOURCE_DIR/omarchy/scripts/install-extras.sh"
+
+rm -f "$STATE_DIR/disabled"
+
+# A running instance (reinstall) still points at the replaced files.
+"$SOURCE_DIR/omarchy/scripts/stop-shell.sh" >/dev/null || true
+sleep 1
 
 info "Starting Caelestia"
 
@@ -233,7 +266,7 @@ echo "========================================"
 echo " Installation complete"
 echo "========================================"
 echo
-printf 'Shell:      %s\nQML:        %s\nLibrary:    %s\nLauncher:   SUPER + SPACE\nPID:        %s\n' \
+printf 'Shell:      %s\nQML:        %s\nLibrary:    %s\nLauncher:   SUPER + SPACE\nToggle:     SUPER + ALT + C\nAutostart:  enabled (omarchy-caelestia-toggle)\nTheme sync: Omarchy theme-set hook\nPID:        %s\n' \
     "$SHELL_FILE" "$QML_DIR" "$LIB_DIR" "$NEW_PID"
 echo
 echo "Omarchy's /usr/share/omarchy/shell was not modified."
