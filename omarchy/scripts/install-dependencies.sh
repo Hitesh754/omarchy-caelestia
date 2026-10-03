@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
+# Dependencies are checked with `pacman -T`, which resolves "provides", so a
+# dependency is satisfied by any package that provides it (e.g. `quickshell`
+# is satisfied by either the official quickshell package or quickshell-git).
 PACKAGES=(
-    "quickshell-git"
+    "quickshell"
     "glibc"
     "gcc-libs"
     "ddcutil"
@@ -19,45 +22,50 @@ PACKAGES=(
     "qt6-base"
     "qt6-declarative"
     "qt6-imageformats"
-    "qt6-m3shapes-git"
+    "qt6-m3shapes"
     "swappy"
     "fish"
     "bash"
     "cmake"
     "ninja"
     "qt6-shadertools"
+    "python"
+)
+
+# Packages to install when a dependency is missing and its name is not an
+# installable package on its own.
+declare -A CANDIDATE=(
+    ["qt6-m3shapes"]="qt6-m3shapes-git"
 )
 
 echo "==> Checking Caelestia dependencies"
 echo
 
-# Fonts are capability dependencies rather than strict package-name
-# dependencies.  Different Arch/Omarchy setups may provide the same
-# fonts under different package names.
+MISSING=()
+
+# Fonts are capability dependencies: different setups may provide the same
+# family under different package names, so check fontconfig first and only
+# fall back to a package when the family is not available.
 if fc-list : family | awk -F',' '{ for (i = 1; i <= NF; i++) if (tolower($i) == "rubik") found = 1 } END { exit !found }'; then
     echo "✓ Rubik font"
 else
     echo "⚠ Rubik font: not installed"
-    echo "  Install the Rubik variable font before continuing."
-    exit 1
+    MISSING+=("ttf-rubik-vf")
 fi
 
 if fc-list : family | awk 'BEGIN { IGNORECASE = 1 } /Material Symbols Rounded/ { found = 1 } END { exit !found }'; then
     echo "✓ Material Symbols Rounded"
 else
     echo "⚠ Material Symbols Rounded: not installed"
-    echo "  Install the Material Symbols font before continuing."
-    exit 1
+    MISSING+=("ttf-material-symbols-variable")
 fi
 
-MISSING=()
-
 for package in "${PACKAGES[@]}"; do
-    if pacman -Q "$package" &>/dev/null; then
+    if pacman -T "$package" >/dev/null; then
         echo "✓ $package"
     else
         echo "⚠ $package: not installed"
-        MISSING+=("$package")
+        MISSING+=("${CANDIDATE[$package]:-$package}")
     fi
 done
 
@@ -76,15 +84,27 @@ OFFICIAL=()
 AUR=()
 UNAVAILABLE=()
 
+HAVE_YAY=0
+command -v yay >/dev/null 2>&1 && HAVE_YAY=1
+
 for package in "${MISSING[@]}"; do
     if pacman -Si "$package" &>/dev/null; then
         OFFICIAL+=("$package")
-    elif yay -Si "$package" &>/dev/null; then
+    elif (( HAVE_YAY )) && yay -Si "$package" &>/dev/null; then
         AUR+=("$package")
     else
         UNAVAILABLE+=("$package")
     fi
 done
+
+if (( ${#UNAVAILABLE[@]} > 0 )); then
+    echo "✗ The following packages could not be found:"
+    printf '  - %s\n' "${UNAVAILABLE[@]}"
+    echo
+    (( HAVE_YAY )) || echo "yay is not installed; AUR packages cannot be resolved."
+    echo "Please install them manually or update the dependency list."
+    exit 1
+fi
 
 if (( ${#OFFICIAL[@]} > 0 )); then
     echo "==> Official Arch packages"
@@ -119,22 +139,13 @@ if (( ${#AUR[@]} > 0 )); then
     fi
 fi
 
-if (( ${#UNAVAILABLE[@]} > 0 )); then
-    echo
-    echo "✗ The following packages could not be found:"
-    printf '  - %s\n' "${UNAVAILABLE[@]}"
-    echo
-    echo "Please install them manually or update the dependency list."
-    exit 1
-fi
-
 echo
 echo "==> Verifying installation"
 
 FAILED=0
 
 for package in "${MISSING[@]}"; do
-    if pacman -Q "$package" &>/dev/null; then
+    if pacman -T "$package" >/dev/null; then
         echo "✓ $package"
     else
         echo "✗ $package"
