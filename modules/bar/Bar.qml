@@ -19,7 +19,13 @@ ColumnLayout {
     required property bool fullscreen
     readonly property int vPadding: Tokens.padding.large
 
+    // Collapses everything that expands in the bar (tray and Omarchy plugins).
     function closeTray(): void {
+        collapseTray();
+        collapseOmarchyPlugins();
+    }
+
+    function collapseTray(): void {
         if (!Config.bar.tray.compact)
             return;
 
@@ -30,11 +36,21 @@ ColumnLayout {
         }
     }
 
+    function collapseOmarchyPlugins(): void {
+        for (let i = 0; i < repeater.count; i++) {
+            const plugins = (repeater.itemAt(i) as EntryWrapper)?.item as OmarchyPlugins;
+            if (plugins)
+                plugins.expanded = false;
+        }
+    }
+
     function checkPopout(y: real): void {
         const ch = childAt(width / 2, y) as EntryWrapper;
 
         if (ch?.entryId !== "tray")
-            closeTray();
+            collapseTray();
+        if (ch?.entryId !== "omarchyPlugins")
+            collapseOmarchyPlugins();
 
         if (!ch) {
             popouts.hasCurrent = false;
@@ -65,8 +81,8 @@ ColumnLayout {
                     popouts.hasCurrent = false;
                 }
             } else {
+                // The compact tray expands on click (see Tray.qml), not on hover.
                 popouts.hasCurrent = false;
-                tray.expanded = true;
             }
         } else if (id === "activeWindow" && Config.bar.popouts.activeWindow && Config.bar.activeWindow.showOnHover) {
             popouts.currentName = id.toLowerCase();
@@ -152,6 +168,14 @@ ColumnLayout {
                 delegate: EntryWrapper {
                     Tray {
                         objectName: "taskbarTray"
+                    }
+                }
+            }
+            DelegateChoice {
+                roleValue: "omarchyPlugins"
+                delegate: EntryWrapper {
+                    OmarchyPlugins {
+                        objectName: "taskbarOmarchyPlugins"
                     }
                 }
             }
