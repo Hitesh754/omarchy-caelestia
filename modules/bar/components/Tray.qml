@@ -94,9 +94,12 @@ StyledRect {
 
         active: Config.bar.tray.compact && items.count > 0
 
-        sourceComponent: Item {
+        sourceComponent: MouseArea {
             implicitWidth: expandIconInner.implicitWidth
             implicitHeight: expandIconInner.implicitHeight - Tokens.padding.small
+
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.expanded = !root.expanded
 
             MaterialIcon {
                 id: expandIconInner

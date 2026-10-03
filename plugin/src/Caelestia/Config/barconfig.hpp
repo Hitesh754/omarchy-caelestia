@@ -89,7 +89,7 @@ class BarTray : public settings::ObjectNode {
 
     CONFIG_PROPERTY(bool, background, false)
     CONFIG_PROPERTY(bool, recolour, false)
-    CONFIG_PROPERTY(bool, compact, false)
+    CONFIG_PROPERTY(bool, compact, true)
     CONFIG_GLOBAL_LIST(BarTrayIconSubList, iconSubs, {})
     CONFIG_GLOBAL_PROPERTY(QStringList, hiddenIcons, {})
 };
@@ -132,6 +132,7 @@ class BarConfig : public settings::ObjectNode {
             LIST_ENTRY(spacer, true),
             LIST_ENTRY(activeWindow, true),
             LIST_ENTRY(spacer, true),
+            LIST_ENTRY(omarchyPlugins, true),
             LIST_ENTRY(tray, true),
             LIST_ENTRY(clock, true),
             LIST_ENTRY(statusIcons, true),

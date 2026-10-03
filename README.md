@@ -80,6 +80,36 @@ stays transparent and Omarchy backgrounds and motion/video wallpaper plugins
 (such as `nosignal.motion-wallpaper`) remain visible, with Caelestia's desktop
 clock and visualiser drawn on top.
 
+## Omarchy plugins in the bar
+
+Third-party Omarchy shell plugins that add a bar widget get a place in the
+Caelestia bar too. They sit behind a single puzzle-piece button: click it to
+reveal one icon per plugin, and click an icon to open that plugin's popout or
+panel. Omarchy's shell still runs the plugin, so it behaves exactly as it does
+in the Omarchy bar, even while the Omarchy bar is hidden.
+
+The list follows Omarchy: every enabled plugin that isn't first-party appears,
+including ones added later with `omarchy plugin add ... --enable` or turned on
+in a plugin manager. Disabled and built-in plugins are left out. The section
+picker Omarchy shows on install only places the widget in the Omarchy bar; it
+appears in Caelestia either way.
+
+Icons come from the plugin's bar widget category. To pick your own, map plugin
+ids to [Material Symbols](https://fonts.google.com/icons) names in
+`~/.config/caelestia/omarchy-plugins.json`:
+
+    {
+      "icons": {
+        "akshar.radio-atlas": "radio"
+      }
+    }
+
+Plugin authors can also set a default with `"caelestia": { "icon": "radio" }`
+in `manifest.json`.
+
+The system tray is compact by default: its icons stay hidden behind an arrow
+until you click it.
+
 ## Safety
 
 The integration is designed not to replace Omarchy's system shell.

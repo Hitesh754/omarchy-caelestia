@@ -39,25 +39,13 @@ CONFIG_LIST_TYPE(GeneralIdleTimeout, GeneralIdleTimeoutList)
 class GeneralIdle : public settings::ObjectNode {
     CONFIG_NODE(GeneralIdle, settings::ObjectNode)
 
-    CONFIG_PROPERTY(bool, lockBeforeSleep, true)
+    // Omarchy owns idle, locking and suspend (its idle service, stay-awake
+    // toggle and lock screen). Caelestia's own timers would lock and suspend
+    // behind Omarchy's back, so they are off unless configured.
+    CONFIG_PROPERTY(bool, lockBeforeSleep, false)
     CONFIG_PROPERTY(bool, inhibitWhenAudio, true)
     CONFIG_PROPERTY(bool, inhibitWhenCharging, false)
-    CONFIG_LIST(GeneralIdleTimeoutList, timeouts,
-        DEFAULT_ARG({
-            vmap({
-                { u"timeout"_s, 180 },
-                { u"idleAction"_s, u"lock"_s },
-            }),
-            vmap({
-                { u"timeout"_s, 300 },
-                { u"idleAction"_s, u"dpms off"_s },
-                { u"returnAction"_s, u"dpms on"_s },
-            }),
-            vmap({
-                { u"timeout"_s, 600 },
-                { u"idleAction"_s, QStringList{ u"suspendThenHibernate"_s } },
-            }),
-        }))
+    CONFIG_LIST(GeneralIdleTimeoutList, timeouts, {})
 };
 
 class GeneralBatteryWarnLevel : public settings::ObjectNode {
