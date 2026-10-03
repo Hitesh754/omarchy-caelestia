@@ -324,6 +324,10 @@ echo "  PID: $RUNNING_PID"
 echo
 echo "==> Update successful"
 
+echo
+"$PROJECT_ROOT/omarchy/scripts/install-extras.sh" ||
+    echo "⚠ Could not refresh the toggle/theme hook; re-run ./omarchy/install.sh."
+
 if [[ -d "$PREVIOUS_PREFIX" ]]; then
     rm -rf "$PREVIOUS_PREFIX"
     echo "✓ Previous installation removed."

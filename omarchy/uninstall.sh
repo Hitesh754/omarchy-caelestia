@@ -14,6 +14,11 @@ STATE_DIR="$STATE_HOME/omarchy-caelestia"
 BACKUP_STATE="$STATE_DIR/bindings-backup"
 OWNED_HASH="$STATE_DIR/bindings-owned-hash"
 
+TOGGLE_BIN="$HOME/.local/bin/omarchy-caelestia-toggle"
+HOOK_FILE="$CONFIG_HOME/omarchy/hooks/theme-set.d/60-caelestia.sh"
+CAELESTIA_CONFIG="$CONFIG_HOME/caelestia/shell.json"
+CONFIG_OWNED_HASH="$STATE_DIR/caelestia-config-owned-hash"
+
 BLOCK_START="-- BEGIN OMARCHY-CAELESTIA: launcher"
 BLOCK_END="-- END OMARCHY-CAELESTIA: launcher"
 
@@ -97,7 +102,7 @@ start_count = text.count(start)
 end_count = text.count(end)
 
 if start_count == 0 and end_count == 0:
-    print("No managed Caelestia launcher block found.")
+    print("No managed Caelestia block found.")
     raise SystemExit(0)
 
 if start_count != 1 or end_count != 1:
@@ -118,7 +123,7 @@ else:
 new_text = text[:start_pos] + text[end_line:]
 path.write_text(new_text)
 
-print("✓ Managed Caelestia launcher block removed.")
+print("✓ Managed Caelestia bindings and autostart removed.")
 PYREMOVE
 
         hyprctl reload >/dev/null
@@ -139,7 +144,30 @@ if [[ -e "$INSTALL_PREFIX" ]]; then
     rm -rf -- "$INSTALL_PREFIX"
 fi
 
-rm -f "$BACKUP_STATE" "$OWNED_HASH" "$STATE_DIR/caelestia.log"
+# Helpers installed by install-extras.sh. Files are only removed when they are
+# ours: the toggle and hook by their header, the config only if unedited.
+if [[ -f "$TOGGLE_BIN" ]] && grep -q "omarchy-caelestia" "$TOGGLE_BIN"; then
+    rm -f "$TOGGLE_BIN"
+    echo "✓ omarchy-caelestia-toggle removed."
+fi
+
+if [[ -f "$HOOK_FILE" ]] && grep -q "omarchy-caelestia" "$HOOK_FILE"; then
+    rm -f "$HOOK_FILE"
+    echo "✓ Theme sync hook removed."
+fi
+
+if [[ -f "$CAELESTIA_CONFIG" && -f "$CONFIG_OWNED_HASH" ]]; then
+    if [[ "$(sha256sum "$CAELESTIA_CONFIG" | awk '{print $1}')" == "$(<"$CONFIG_OWNED_HASH")" ]]; then
+        rm -f "$CAELESTIA_CONFIG"
+        rmdir "$(dirname "$CAELESTIA_CONFIG")" 2>/dev/null || true
+        echo "✓ Default Caelestia config removed."
+    else
+        echo "⚠ $CAELESTIA_CONFIG was edited; leaving it in place."
+    fi
+fi
+
+rm -f "$BACKUP_STATE" "$OWNED_HASH" "$CONFIG_OWNED_HASH" \
+    "$STATE_DIR/disabled" "$STATE_DIR/caelestia.log"
 
 if [[ -d "$STATE_DIR" ]] &&
    [[ -z "$(find "$STATE_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
